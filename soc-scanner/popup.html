@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>DropReal Scanner</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #111111;
+    --bg2: #1a1a1a;
+    --bg3: #242424;
+    --border: #2e2e2e;
+    --text: #f0f0f0;
+    --muted: #888888;
+    --yellow: #F5C300;
+    --yellow-dim: rgba(245,195,0,0.15);
+    --yellow-border: rgba(245,195,0,0.35);
+    --red: #e05252;
+    --green: #4caf7d;
+    --blue: #5b9cf6;
+    --orange: #e09a3a;
+    --mono: 'JetBrains Mono', 'Courier New', monospace;
+    --sans: 'DM Sans', system-ui, sans-serif;
+  }
+  body { width: 520px; min-height: 200px; background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 13px; line-height: 1.5; }
+
+  .header { background: var(--bg2); border-bottom: 1px solid var(--border); padding: 11px 16px; display: flex; align-items: center; gap: 10px; }
+  .logo-wrap { display: flex; align-items: center; gap: 8px; }
+  .logo-squares { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; width: 22px; height: 22px; }
+  .sq { border-radius: 2px; }
+  .sq-black { background: #111; border: 1px solid #444; }
+  .sq-yellow { background: var(--yellow); }
+  .sq-empty { background: transparent; }
+  .brand-name { font-size: 15px; font-weight: 700; color: #fff; letter-spacing: -0.3px; }
+  .brand-sub { font-size: 10px; color: var(--muted); margin-top: 1px; }
+  .settings-btn { margin-left: auto; background: none; border: none; cursor: pointer; color: var(--muted); font-size: 15px; padding: 4px; border-radius: 4px; }
+  .settings-btn:hover { color: var(--yellow); }
+
+  .settings-panel { display: none; padding: 12px 16px; background: var(--bg2); border-bottom: 1px solid var(--border); }
+  .settings-panel.open { display: block; }
+  .settings-panel label { font-size: 11px; color: var(--muted); display: block; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .settings-panel input { width: 100%; background: var(--bg3); border: 1px solid var(--border); color: var(--text); font-family: var(--mono); font-size: 12px; padding: 7px 10px; border-radius: 6px; outline: none; }
+  .settings-panel input:focus { border-color: var(--yellow); }
+  .settings-hint { font-size: 11px; color: var(--muted); margin-top: 5px; }
+  .settings-hint a { color: var(--yellow); text-decoration: none; }
+  .save-btn { margin-top: 10px; background: var(--yellow); border: none; color: #111; padding: 6px 16px; border-radius: 5px; font-size: 12px; font-weight: 700; cursor: pointer; }
+  .save-btn:hover { background: #ffd700; }
+
+  .url-bar { padding: 10px 14px; background: var(--bg2); border-bottom: 1px solid var(--border); display: flex; gap: 8px; }
+  .url-input { flex: 1; background: var(--bg3); border: 1px solid var(--border); color: var(--text); font-family: var(--mono); font-size: 12px; padding: 7px 10px; border-radius: 6px; outline: none; }
+  .url-input:focus { border-color: var(--yellow); }
+  .scan-btn { background: var(--yellow); color: #111; border: none; padding: 7px 18px; border-radius: 6px; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+  .scan-btn:hover { background: #ffd700; }
+  .scan-btn:disabled { background: var(--bg3); color: var(--muted); cursor: not-allowed; }
+
+  .progress-wrap { display: none; padding: 20px 16px; flex-direction: column; gap: 10px; }
+  .progress-wrap.active { display: flex; }
+  .progress-step { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--muted); }
+  .progress-step.done { color: var(--green); }
+  .progress-step.active { color: var(--yellow); }
+  .step-icon { width: 16px; text-align: center; }
+  .spinner { width: 13px; height: 13px; border: 2px solid var(--bg3); border-top-color: var(--yellow); border-radius: 50%; animation: spin 0.7s linear infinite; display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .results { display: none; max-height: 600px; overflow-y: auto; }
+  .results.active { display: block; }
+
+  .score-bar { padding: 14px 16px; background: var(--bg2); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 14px; }
+  .score-circle { width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 16px; font-weight: 700; flex-shrink: 0; border: 3px solid; }
+  .score-a { border-color: var(--green); color: var(--green); }
+  .score-b { border-color: var(--yellow); color: var(--yellow); }
+  .score-c { border-color: var(--orange); color: var(--orange); }
+  .score-f { border-color: var(--red); color: var(--red); }
+  .score-info { flex: 1; }
+  .score-label { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+  .score-prog-bg { height: 4px; background: var(--bg3); border-radius: 2px; }
+  .score-prog { height: 4px; border-radius: 2px; transition: width 0.6s; }
+
+  .tabs { display: flex; border-bottom: 1px solid var(--border); background: var(--bg2); overflow-x: auto; }
+  .tab { padding: 8px 13px; font-size: 12px; font-weight: 500; color: var(--muted); border: none; background: none; cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; font-family: var(--sans); }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--yellow); border-bottom-color: var(--yellow); }
+  .tab-count { display: inline-block; background: var(--bg3); color: var(--muted); border-radius: 10px; padding: 1px 6px; font-size: 10px; margin-left: 3px; }
+
+  .panel { display: none; padding: 14px 16px; }
+  .panel.active { display: block; }
+
+  .section-title { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; margin-top: 14px; }
+  .section-title:first-child { margin-top: 0; }
+
+  .header-row { display: flex; align-items: flex-start; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--border); }
+  .header-row:last-child { border-bottom: none; }
+  .hdr-status { width: 18px; flex-shrink: 0; padding-top: 2px; }
+  .hdr-name { font-family: var(--mono); font-size: 11px; color: var(--muted); min-width: 160px; }
+  .hdr-value { font-family: var(--mono); font-size: 11px; color: var(--text); flex: 1; word-break: break-all; }
+  .hdr-missing { font-size: 11px; color: var(--red); font-style: italic; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .dot-ok { background: var(--green); }
+  .dot-warn { background: var(--orange); }
+  .dot-err { background: var(--red); }
+
+  .tech-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; }
+  .tech-card { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+  .tech-name { font-weight: 600; font-size: 13px; margin-bottom: 2px; }
+  .tech-cat { font-size: 11px; }
+  .tech-val { font-family: var(--mono); font-size: 10px; color: var(--yellow); margin-top: 4px; }
+
+  .dns-record { display: flex; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--border); }
+  .dns-record:last-child { border-bottom: none; }
+  .dns-type { font-family: var(--mono); font-size: 10px; font-weight: 700; background: var(--yellow-dim); border: 1px solid var(--yellow-border); padding: 2px 7px; border-radius: 4px; color: var(--yellow); min-width: 44px; text-align: center; height: fit-content; }
+  .dns-data { font-family: var(--mono); font-size: 11px; color: var(--text); }
+
+  .subdomain-list { display: flex; flex-wrap: wrap; gap: 6px; }
+  .subdomain-tag { font-family: var(--mono); font-size: 11px; background: var(--bg3); border: 1px solid var(--border); color: var(--muted); padding: 3px 9px; border-radius: 12px; }
+
+  .port-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 6px; }
+  .port-card { background: var(--bg3); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; text-align: center; }
+  .port-num { font-family: var(--mono); font-size: 14px; font-weight: 700; color: var(--text); }
+  .port-svc { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .port-open { border-color: rgba(224,82,82,0.4); }
+  .port-num-open { color: var(--red); }
+
+  .ssl-grade { display: inline-flex; align-items: center; justify-content: center; width: 56px; height: 56px; border-radius: 50%; font-family: var(--mono); font-size: 22px; font-weight: 700; border: 3px solid; margin-bottom: 10px; }
+  .ssl-a { border-color: var(--green); color: var(--green); }
+  .ssl-b { border-color: var(--yellow); color: var(--yellow); }
+  .ssl-c { border-color: var(--orange); color: var(--orange); }
+  .ssl-f { border-color: var(--red); color: var(--red); }
+  .ssl-na { border-color: var(--muted); color: var(--muted); }
+
+  .ai-box { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 14px; font-size: 13px; line-height: 1.7; color: var(--text); white-space: pre-wrap; }
+  .ai-loading { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12px; padding: 8px 0; }
+  .ai-btn { background: var(--yellow); color: #111; border: none; padding: 8px 18px; border-radius: 6px; font-size: 13px; font-weight: 700; cursor: pointer; margin-bottom: 10px; }
+  .ai-btn:hover { background: #ffd700; }
+  .ai-btn:disabled { background: var(--bg3); color: var(--muted); cursor: not-allowed; }
+
+  .issue-row { display: flex; align-items: flex-start; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--border); }
+  .issue-row:last-child { border-bottom: none; }
+  .issue-badge { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 10px; white-space: nowrap; margin-top: 1px; }
+  .issue-high { background: rgba(224,82,82,0.15); color: var(--red); border: 1px solid rgba(224,82,82,0.3); }
+  .issue-medium { background: rgba(224,154,58,0.15); color: var(--orange); border: 1px solid rgba(224,154,58,0.3); }
+  .issue-low { background: var(--bg3); color: var(--muted); border: 1px solid var(--border); }
+
+  .empty-state { text-align: center; padding: 24px; color: var(--muted); font-size: 12px; }
+  .progress-bar-bg { width: 100%; height: 5px; background: var(--bg3); border-radius: 3px; margin-top: 6px; }
+  .progress-bar { height: 5px; border-radius: 3px; }
+
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--yellow); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo-wrap">
+    <div class="logo-squares">
+      <div class="sq sq-black"></div>
+      <div class="sq sq-yellow"></div>
+      <div class="sq sq-yellow"></div>
+      <div class="sq sq-empty"></div>
+    </div>
+    <div>
+      <div class="brand-name">DropReal</div>
+      <div class="brand-sub">Cybersecurity & Compliance</div>
+    </div>
+  </div>
+  <button class="settings-btn" id="settingsToggle" title="Configurações">⚙️</button>
+</div>
+
+<div class="settings-panel" id="settingsPanel">
+  <label>Groq API Key</label>
+  <input type="password" id="groqKeyInput" placeholder="gsk_..." />
+  <div class="settings-hint">Gratuito em <a href="https://console.groq.com/keys" target="_blank">console.groq.com</a></div>
+  <button class="save-btn" id="saveApiKey">Salvar</button>
+</div>
+
+<div class="url-bar">
+  <input class="url-input" id="urlInput" type="text" placeholder="https://exemplo.com" />
+  <button class="scan-btn" id="scanBtn">Escanear</button>
+</div>
+
+<div class="progress-wrap" id="progressWrap">
+  <div class="progress-step" id="step-headers"><span class="step-icon">⏳</span> Analisando headers HTTP...</div>
+  <div class="progress-step" id="step-ssl"><span class="step-icon">⏳</span> Verificando certificado SSL...</div>
+  <div class="progress-step" id="step-dns"><span class="step-icon">⏳</span> Consultando registros DNS...</div>
+  <div class="progress-step" id="step-ports"><span class="step-icon">⏳</span> Detectando portas abertas...</div>
+  <div class="progress-step" id="step-done"><span class="step-icon">⏳</span> Consolidando resultados...</div>
+</div>
+
+<div class="results" id="results">
+  <div class="score-bar">
+    <div class="score-circle" id="scoreCircle">–</div>
+    <div class="score-info">
+      <div class="score-label" id="scoreLabel">Aguardando scan...</div>
+      <div class="score-prog-bg" style="margin-top:6px">
+        <div class="score-prog" id="scoreBar" style="width:0%;background:var(--green)"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="issues">Problemas <span class="tab-count" id="cnt-issues">0</span></button>
+    <button class="tab" data-tab="headers">Headers <span class="tab-count" id="cnt-headers">–</span></button>
+    <button class="tab" data-tab="tech">Tecnologias <span class="tab-count" id="cnt-tech">0</span></button>
+    <button class="tab" data-tab="ssl">SSL/TLS</button>
+    <button class="tab" data-tab="dns">DNS <span class="tab-count" id="cnt-dns">0</span></button>
+    <button class="tab" data-tab="ports">Portas <span class="tab-count" id="cnt-ports">0</span></button>
+    <button class="tab" data-tab="ai">IA 🤖</button>
+  </div>
+
+  <div class="panel active" id="panel-issues"></div>
+  <div class="panel" id="panel-headers"></div>
+  <div class="panel" id="panel-tech"></div>
+  <div class="panel" id="panel-ssl"></div>
+  <div class="panel" id="panel-dns"></div>
+  <div class="panel" id="panel-ports"></div>
+  <div class="panel" id="panel-ai"></div>
+</div>
+
+<script src="src/scanner.js"></script>
+<script src="popup.js"></script>
+</body>
+</html>
