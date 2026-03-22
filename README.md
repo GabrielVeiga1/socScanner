@@ -83,12 +83,12 @@ Ideal para analistas que precisam validar rapidamente a postura de segurança de
 ## 🤖 Configuração da IA
 
 1. Clique no ícone ⚙️ da extensão  
-2. Insira sua **Anthropic API Key**  
+2. Insira sua **Groq API Key**  
 3. Salve a chave  
 4. Execute um scan e acesse a aba **IA 🤖**  
 5. Clique em **Analisar com IA**
 
-🔗 Obtenha sua chave: https://console.anthropic.com
+🔗 Obtenha sua chave: console.groq.com
 
 ---
 
